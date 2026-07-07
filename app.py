@@ -22,6 +22,138 @@ from lijekovi import RJECNIK_LIJEKOVA, SVI_INN
 st.set_page_config(page_title="PIP Procjena — Beers · STOPP/START", page_icon="💊", layout="wide")
 
 # ------------------------------------------------------------------
+# vizuelni sloj — medicinska paleta (teal/tirkizna), kartice, mobilni prikaz
+# ------------------------------------------------------------------
+st.markdown("""
+<style>
+:root {
+    --pip-teal: #0F766E;
+    --pip-teal-dark: #115E59;
+    --pip-teal-light: #CCECE9;
+    --pip-ink: #16323E;
+    --pip-muted: #5B7684;
+    --pip-card: #FFFFFF;
+    --pip-border: #DCE9E7;
+    --pip-stopp: #B4232A;
+    --pip-start: #1B7A3D;
+}
+
+/* tipografija i osnovni razmaci */
+html, body, [class*="css"] { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+.block-container { padding-top: 1.2rem; padding-bottom: 3rem; max-width: 1200px; }
+
+/* sakrij Streamlit meni i futer — čišći, profesionalan izgled */
+#MainMenu, footer, header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+
+/* zaglavlje aplikacije */
+.pip-banner {
+    background: linear-gradient(135deg, #0F766E 0%, #0E7490 60%, #155E75 100%);
+    border-radius: 16px;
+    padding: 1.6rem 1.8rem;
+    color: #FFFFFF;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 6px 18px rgba(15, 118, 110, 0.25);
+}
+.pip-banner h1 {
+    margin: 0 0 .3rem 0;
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: #FFFFFF;
+}
+.pip-banner p { margin: 0; opacity: .92; font-size: .95rem; line-height: 1.45; }
+.pip-banner .pip-badges { margin-top: .7rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+.pip-badge {
+    display: inline-block;
+    background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px;
+    padding: .15rem .7rem;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+}
+
+/* naslovi sekcija */
+h2 {
+    color: var(--pip-teal-dark) !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid var(--pip-teal-light);
+    padding-bottom: .35rem !important;
+    margin-top: 1.6rem !important;
+}
+h3 { color: var(--pip-ink) !important; font-size: 1.05rem !important; }
+
+/* metrike kao kliničke kartice */
+[data-testid="stMetric"] {
+    background: var(--pip-card);
+    border: 1px solid var(--pip-border);
+    border-left: 4px solid var(--pip-teal);
+    border-radius: 12px;
+    padding: .8rem 1rem;
+    box-shadow: 0 2px 6px rgba(22, 50, 62, 0.06);
+}
+[data-testid="stMetricLabel"] { color: var(--pip-muted); font-size: .8rem; }
+[data-testid="stMetricValue"] { color: var(--pip-ink); font-weight: 700; }
+
+/* expanderi (nalazi) kao kartice */
+[data-testid="stExpander"] {
+    background: var(--pip-card);
+    border: 1px solid var(--pip-border);
+    border-radius: 12px;
+    margin-bottom: .5rem;
+    box-shadow: 0 1px 4px rgba(22, 50, 62, 0.05);
+    overflow: hidden;
+}
+[data-testid="stExpander"] summary { font-size: .92rem; }
+
+/* glavno dugme */
+.stButton > button[kind="primary"], [data-testid="stDownloadButton"] > button {
+    background: linear-gradient(135deg, var(--pip-teal) 0%, #0E7490 100%);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 12px;
+    padding: .7rem 1.2rem;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.30);
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+.stButton > button[kind="primary"]:hover, [data-testid="stDownloadButton"] > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 118, 110, 0.38);
+    color: #FFFFFF;
+}
+
+/* checkbox blokovi — kompaktnije */
+[data-testid="stCheckbox"] { margin-bottom: -.35rem; }
+[data-testid="stCheckbox"] p { font-size: .88rem; }
+
+/* upozorenja i info blokovi — mekši uglovi */
+[data-testid="stAlert"] { border-radius: 12px; }
+
+/* tabela lijekova */
+[data-testid="stDataFrame"], [data-testid="stDataEditor"] {
+    border: 1px solid var(--pip-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* mobilni prikaz */
+@media (max-width: 740px) {
+    .block-container { padding-left: .9rem; padding-right: .9rem; }
+    .pip-banner { padding: 1.1rem 1.2rem; border-radius: 12px; }
+    .pip-banner h1 { font-size: 1.35rem; }
+    .pip-banner p { font-size: .85rem; }
+    h2 { font-size: 1.1rem !important; }
+    [data-testid="stMetric"] { padding: .6rem .8rem; }
+    .stButton > button[kind="primary"] { width: 100%; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
 # šifrarnik stanja (Dio 1.4 vodiča) — potvrdne kućice, ne slobodan tekst
 # ------------------------------------------------------------------
 STANJA: dict[str, list[tuple[str, str]]] = {
@@ -79,11 +211,19 @@ STANJA: dict[str, list[tuple[str, str]]] = {
 POUZDANOST_IKONA = {"visok": "🔴", "srednji": "🟠", "nizak": "⚪"}
 
 # ------------------------------------------------------------------
-st.title("💊 PIP Procjena")
-st.caption(
-    "Provjera potencijalno neadekvatnog propisivanja — **AGS Beers 2023** i **STOPP/START v3**. "
-    "Alat je podrška odlučivanju i edukaciji; konačnu odluku donosi farmaceut/ljekar."
-)
+st.markdown("""
+<div class="pip-banner">
+  <h1>💊 PIP Procjena</h1>
+  <p>Provjera potencijalno neadekvatnog propisivanja lijekova kod starijih pacijenata.
+     Alat je podrška odlučivanju i edukaciji — konačnu odluku donosi farmaceut/ljekar.</p>
+  <div class="pip-badges">
+    <span class="pip-badge">AGS Beers 2023</span>
+    <span class="pip-badge">STOPP v3</span>
+    <span class="pip-badge">START v3</span>
+    <span class="pip-badge">Radi bez interneta i API-ja</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ================= 1. demografija i bubrežna funkcija =================
 st.header("1 · Pacijent")
